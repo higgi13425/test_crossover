@@ -1,0 +1,139 @@
+---
+title: "sim_datasets"
+format: html
+editor: visual
+---
+
+## Creating simulated datasets
+
+We will simulate datasets for a planned clinical trial for fatigue in IBD in the absence of a flare, iron deficiency anemia, or hypothyroidism.
+
+```{r setup}
+#| include: false
+library(tidyverse)
+library(CrossCarry)
+```
+
+The trial design includes a crossover design between two treatments, thiamine at 15 mg/kg daily, and modafinil 100 mg bid, with 4 week treatment periods and 4 week washout periods. This will be followed by a 2nd 4 week washout period, then an 8 week trial of wellbutrin.
+
+Fatigue and QoL will be measured at the beginning and end of each period with the appropriate PRO (UCPRO and CDPRO), and with the fatigue instrument, the Inflammatory Bowel Disease-Fatigue Questionnaire. Range is 0-20 from 5 questions to get score 1, with higher scores indicating more fatigue. The median for CD is 9 in remission, 11 in flare. The median for UC is 8 in remission, 11 in flare. Data from *Journal of Crohn's and Colitis*, Volume 8, Issue 11, 1 November 2014, Pages 1398–1406, <https://doi.org/10.1016/j.crohns.2014.04.013>. Improvement is considered a reduction by 3 points.
+
+Questions for Score 1 include
+
+1.1. What is your fatigue level right now
+
+1.2. What was your highest fatigue level in the past 2 weeks
+
+1.3. What was your lowest fatigue level in the past 2 weeks
+
+1.4. What was your average fatigue level in the past 2 weeks
+
+1.5. How much of your waking time have you felt fatigued in the past two weeks
+
+Responses on a 0 (none) to 4 (severe or all of the time) scale - \[these are guesses - need to see legit version of IBD-F\]
+
+0 None, 1 Slight, 2 Somewhat, 3 Moderate, 4 Severe
+
+0 Never, 1 Rarely, 2 Sometimes, 3 Very Often, 4 All of the Time
+
+We will consider 1st order and 2nd order carryover.
+
+There will be 7 study periods. The first six will all be of 4 weeks duration. The last will be of 8 weeks duration (wellbutrin Rx).
+
+| Sequence | Period 1 | Period 2 | Period 3 | Period 4 | Period 5 | Period 6 | Period 7   |
+|---------|---------|---------|---------|---------|---------|---------|---------|
+| 1 - AAB  | Thi      | Washout  | Thi      | Washout  | Mod      | Washout  | Wellbutrin |
+| 2 - ABA  | Thi      | Washout  | Mod      | Washout  | Thi      | Washout  | Wellbutrin |
+| 3 - BAA  | Mod      | Washout  | Thi      | Washout  | Thi      | Washout  | Wellbutrin |
+
+: Study Timeline
+
+Now to begin simulating a dataset of fatigue measurements (8 total).
+
+All measurements will occur at the beginning and end of each period
+
+We will start with 10 patients in each group, and a dataset with no carryover at all.
+
+```{r}
+
+baseline = 9
+sdev = 2 #get mean and SD data for fatigue from Bager paper
+c1 = 0 # half of previous effect size
+c2 = 0 # one quarter of 2nd previous effect size 
+
+# effect_T = -3
+# effect_M = -4
+# effect_W = -5
+
+data1 <- tibble(
+  # set up patient_id
+  # set up f scores as single col, 
+  # set up time point as measurement time 1-8
+  # total 240 measurements of fatigue (f)
+  subject_id = rep(1:30, each = 8),
+  seq = rep(rep(c(1:3), each = 8), 10),
+  timepoint = c(rep(1:8, times = 30)),
+  # add random noise
+  rand1 = rnorm(n = 240, mean = 0, sd = sdev),
+  rand2 = rnorm(n = 240, mean = 0, sd = sdev),
+  rand3 = rnorm(n = 240, mean = 0, sd = sdev),
+  rand4 = rnorm(n = 240, mean = 0, sd = sdev),
+  rand5 = rnorm(n = 240, mean = 0, sd = sdev),
+  rand6 = rnorm(n = 240, mean = 0, sd = sdev),
+  rand7 = rnorm(n = 240, mean = 0, sd = sdev),
+  rand8 = rnorm(n = 240, mean = 0, sd = sdev),
+  c1 = 0,
+  c2 = 0,
+  baseline = 9,
+  effect = case_when(timepoint == 1 ~ 0,
+                     seq == 1 & timepoint == 2 ~ -3,
+                     seq == 2 & timepoint == 2 ~ -3,
+                     seq == 3 & timepoint == 2 ~ -4,
+                     timepoint == 3 ~ 0,
+                     seq == 1 & timepoint == 4 ~ -3,
+                     seq == 2 & timepoint == 4 ~ -4,
+                     seq == 3 & timepoint == 4 ~ -3,
+                     timepoint == 5 ~ 0,
+                     seq == 1 & timepoint == 6 ~ -4,
+                     seq == 2 & timepoint == 6 ~ -3,
+                     seq == 3 & timepoint == 6 ~ -3,
+                     timepoint == 7 ~ 0, 
+                     timepoint == 8 ~ -5),
+  fatigue = round(baseline + effect + c1 + c2 +
+    case_when(timepoint == 1 ~ rand1,
+              timepoint == 2 ~ rand2,
+              timepoint == 3 ~ rand3,
+              timepoint == 4 ~ rand4,
+              timepoint == 5 ~ rand5,
+              timepoint == 6 ~ rand6,
+              timepoint == 7 ~ rand7,
+              timepoint == 8 ~ rand8
+              ))
+)
+
+data2 <- data1 |> 
+  select(subject_id, timepoint, seq, fatigue) |> 
+  pivot_wider(id_cols = c(subject_id, seq), names_from = timepoint, names_prefix = "tmpt_", values_from = fatigue)
+ 
+data2_long <- data2 |> 
+  pivot_longer(cols = tmpt_1:tmpt_8,names_prefix = "tmpt_", names_to = "timepoint", values_to = "fatigue")
+  # define c1 depending on seq and period
+  # define c2 depending on seq and period
+
+```
+
+This creates 3 data sets with a 1st order carryover of 0, and a 2nd order carryover of 0.
+
+data1 is tall, with all of the input vars, including random noise at each time point.
+
+data2 is wide, with only subject_id, sequence, and fatigue score at each time point.
+
+data2_long is the same as data2 but in long format.
+
+Need to add treatment, period to use package.
+
+Look at CrossCarry::Arterial data for example
+
+```{r}
+CrossCarry::Arterial 
+```

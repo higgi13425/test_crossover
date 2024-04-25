@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.353">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>sim_datasets</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="sim_data_files/libs/clipboard/clipboard.min.js"></script>
+<script src="sim_data_files/libs/quarto-html/quarto.js"></script>
+<script src="sim_data_files/libs/quarto-html/popper.min.js"></script>
+<script src="sim_data_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="sim_data_files/libs/quarto-html/anchor.min.js"></script>
+<link href="sim_data_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="sim_data_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="sim_data_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="sim_data_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="sim_data_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">sim_datasets</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<section id="creating-simulated-datasets" class="level2">
+<h2 class="anchored" data-anchor-id="creating-simulated-datasets">Creating simulated datasets</h2>
+<p>We will simulate datasets for a planned clinical trial for fatigue in IBD in the absence of a flare, iron deficiency anemia, or hypothyroidism.</p>
+<p>The trial design includes a crossover design between two treatments, thiamine at 15 mg/kg daily, and modafinil 100 mg bid, with 4 week treatment periods and 4 week washout periods. This will be followed by a 2nd 4 week washout period, then an 8 week trial of wellbutrin.</p>
+<p>Fatigue and QoL will be measured at the beginning and end of each period with the appropriate PRO (UCPRO and CDPRO), and with the fatigue instrument, the Inflammatory Bowel Disease-Fatigue Questionnaire. Range is 0-20 from 5 questions to get score 1, with higher scores indicating more fatigue. The median for CD is 9 in remission, 11 in flare. The median for UC is 8 in remission, 11 in flare. Data from <em>Journal of Crohn’s and Colitis</em>, Volume 8, Issue 11, 1 November 2014, Pages 1398–1406, <a href="https://doi.org/10.1016/j.crohns.2014.04.013" class="uri">https://doi.org/10.1016/j.crohns.2014.04.013</a>. Improvement is considered a reduction by 3 points.</p>
+<p>Questions for Score 1 include</p>
+<p>1.1. What is your fatigue level right now</p>
+<p>1.2. What was your highest fatigue level in the past 2 weeks</p>
+<p>1.3. What was your lowest fatigue level in the past 2 weeks</p>
+<p>1.4. What was your average fatigue level in the past 2 weeks</p>
+<p>1.5. How much of your waking time have you felt fatigued in the past two weeks</p>
+<p>Responses on a 0 (none) to 4 (severe or all of the time) scale - [these are guesses - need to see legit version of IBD-F]</p>
+<p>0 None, 1 Slight, 2 Somewhat, 3 Moderate, 4 Severe</p>
+<p>0 Never, 1 Rarely, 2 Sometimes, 3 Very Often, 4 All of the Time</p>
+<p>We will consider 1st order and 2nd order carryover.</p>
+<p>There will be 7 study periods. The first six will all be of 4 weeks duration. The last will be of 8 weeks duration (wellbutrin Rx).</p>
+<table class="table">
+<caption>Study Timeline</caption>
+<colgroup>
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+<col style="width: 12%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Sequence</th>
+<th>Period 1</th>
+<th>Period 2</th>
+<th>Period 3</th>
+<th>Period 4</th>
+<th>Period 5</th>
+<th>Period 6</th>
+<th>Period 7</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1 - AAB</td>
+<td>Thi</td>
+<td>Washout</td>
+<td>Thi</td>
+<td>Washout</td>
+<td>Mod</td>
+<td>Washout</td>
+<td>Wellbutrin</td>
+</tr>
+<tr class="even">
+<td>2 - ABA</td>
+<td>Thi</td>
+<td>Washout</td>
+<td>Mod</td>
+<td>Washout</td>
+<td>Thi</td>
+<td>Washout</td>
+<td>Wellbutrin</td>
+</tr>
+<tr class="odd">
+<td>3 - BAA</td>
+<td>Mod</td>
+<td>Washout</td>
+<td>Thi</td>
+<td>Washout</td>
+<td>Thi</td>
+<td>Washout</td>
+<td>Wellbutrin</td>
+</tr>
+</tbody>
+</table>
+<p>Now to begin simulating a dataset of fatigue measurements (8 total).</p>
+<p>All measurements will occur at the beginning and end of each period</p>
+<p>We will start with 10 patients in each group, and a dataset with no carryover at all.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>baseline <span class="ot">=</span> <span class="dv">9</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>sdev <span class="ot">=</span> <span class="dv">2</span> <span class="co">#get mean and SD data for fatigue from Bager paper</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>c1 <span class="ot">=</span> <span class="dv">0</span> <span class="co"># half of previous effect size</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>c2 <span class="ot">=</span> <span class="dv">0</span> <span class="co"># one quarter of 2nd previous effect size </span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># effect_T = -3</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># effect_M = -4</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># effect_W = -5</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>data1 <span class="ot">&lt;-</span> <span class="fu">tibble</span>(</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>  <span class="co"># set up patient_id</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a>  <span class="co"># set up f scores as single col, </span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>  <span class="co"># set up time point as measurement time 1-8</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>  <span class="co"># total 240 measurements of fatigue (f)</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">subject_id =</span> <span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">30</span>, <span class="at">each =</span> <span class="dv">8</span>),</span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">seq =</span> <span class="fu">rep</span>(<span class="fu">rep</span>(<span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>), <span class="at">each =</span> <span class="dv">8</span>), <span class="dv">10</span>),</span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">timepoint =</span> <span class="fu">c</span>(<span class="fu">rep</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">8</span>, <span class="at">times =</span> <span class="dv">30</span>)),</span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>  <span class="co"># add random noise</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">rand1 =</span> <span class="fu">rnorm</span>(<span class="at">n =</span> <span class="dv">240</span>, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> sdev),</span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>  <span class="at">rand2 =</span> <span class="fu">rnorm</span>(<span class="at">n =</span> <span class="dv">240</span>, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> sdev),</span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>  <span class="at">rand3 =</span> <span class="fu">rnorm</span>(<span class="at">n =</span> <span class="dv">240</span>, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> sdev),</span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>  <span class="at">rand4 =</span> <span class="fu">rnorm</span>(<span class="at">n =</span> <span class="dv">240</span>, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> sdev),</span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>  <span class="at">rand5 =</span> <span class="fu">rnorm</span>(<span class="at">n =</span> <span class="dv">240</span>, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> sdev),</span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>  <span class="at">rand6 =</span> <span class="fu">rnorm</span>(<span class="at">n =</span> <span class="dv">240</span>, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> sdev),</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>  <span class="at">rand7 =</span> <span class="fu">rnorm</span>(<span class="at">n =</span> <span class="dv">240</span>, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> sdev),</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>  <span class="at">rand8 =</span> <span class="fu">rnorm</span>(<span class="at">n =</span> <span class="dv">240</span>, <span class="at">mean =</span> <span class="dv">0</span>, <span class="at">sd =</span> sdev),</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>  <span class="at">c1 =</span> <span class="dv">0</span>,</span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>  <span class="at">c2 =</span> <span class="dv">0</span>,</span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>  <span class="at">baseline =</span> <span class="dv">9</span>,</span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>  <span class="at">effect =</span> <span class="fu">case_when</span>(timepoint <span class="sc">==</span> <span class="dv">1</span> <span class="sc">~</span> <span class="dv">0</span>,</span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a>                     seq <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> timepoint <span class="sc">==</span> <span class="dv">2</span> <span class="sc">~</span> <span class="sc">-</span><span class="dv">3</span>,</span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a>                     seq <span class="sc">==</span> <span class="dv">2</span> <span class="sc">&amp;</span> timepoint <span class="sc">==</span> <span class="dv">2</span> <span class="sc">~</span> <span class="sc">-</span><span class="dv">3</span>,</span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a>                     seq <span class="sc">==</span> <span class="dv">3</span> <span class="sc">&amp;</span> timepoint <span class="sc">==</span> <span class="dv">2</span> <span class="sc">~</span> <span class="sc">-</span><span class="dv">4</span>,</span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a>                     timepoint <span class="sc">==</span> <span class="dv">3</span> <span class="sc">~</span> <span class="dv">0</span>,</span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a>                     seq <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> timepoint <span class="sc">==</span> <span class="dv">4</span> <span class="sc">~</span> <span class="sc">-</span><span class="dv">3</span>,</span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>                     seq <span class="sc">==</span> <span class="dv">2</span> <span class="sc">&amp;</span> timepoint <span class="sc">==</span> <span class="dv">4</span> <span class="sc">~</span> <span class="sc">-</span><span class="dv">4</span>,</span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>                     seq <span class="sc">==</span> <span class="dv">3</span> <span class="sc">&amp;</span> timepoint <span class="sc">==</span> <span class="dv">4</span> <span class="sc">~</span> <span class="sc">-</span><span class="dv">3</span>,</span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>                     timepoint <span class="sc">==</span> <span class="dv">5</span> <span class="sc">~</span> <span class="dv">0</span>,</span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>                     seq <span class="sc">==</span> <span class="dv">1</span> <span class="sc">&amp;</span> timepoint <span class="sc">==</span> <span class="dv">6</span> <span class="sc">~</span> <span class="sc">-</span><span class="dv">4</span>,</span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a>                     seq <span class="sc">==</span> <span class="dv">2</span> <span class="sc">&amp;</span> timepoint <span class="sc">==</span> <span class="dv">6</span> <span class="sc">~</span> <span class="sc">-</span><span class="dv">3</span>,</span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a>                     seq <span class="sc">==</span> <span class="dv">3</span> <span class="sc">&amp;</span> timepoint <span class="sc">==</span> <span class="dv">6</span> <span class="sc">~</span> <span class="sc">-</span><span class="dv">3</span>,</span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a>                     timepoint <span class="sc">==</span> <span class="dv">7</span> <span class="sc">~</span> <span class="dv">0</span>, </span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a>                     timepoint <span class="sc">==</span> <span class="dv">8</span> <span class="sc">~</span> <span class="sc">-</span><span class="dv">5</span>),</span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a>  <span class="at">fatigue =</span> <span class="fu">round</span>(baseline <span class="sc">+</span> effect <span class="sc">+</span> c1 <span class="sc">+</span> c2 <span class="sc">+</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a>    <span class="fu">case_when</span>(timepoint <span class="sc">==</span> <span class="dv">1</span> <span class="sc">~</span> rand1,</span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a>              timepoint <span class="sc">==</span> <span class="dv">2</span> <span class="sc">~</span> rand2,</span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a>              timepoint <span class="sc">==</span> <span class="dv">3</span> <span class="sc">~</span> rand3,</span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a>              timepoint <span class="sc">==</span> <span class="dv">4</span> <span class="sc">~</span> rand4,</span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a>              timepoint <span class="sc">==</span> <span class="dv">5</span> <span class="sc">~</span> rand5,</span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a>              timepoint <span class="sc">==</span> <span class="dv">6</span> <span class="sc">~</span> rand6,</span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a>              timepoint <span class="sc">==</span> <span class="dv">7</span> <span class="sc">~</span> rand7,</span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a>              timepoint <span class="sc">==</span> <span class="dv">8</span> <span class="sc">~</span> rand8</span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a>              ))</span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a>data2 <span class="ot">&lt;-</span> data1 <span class="sc">|&gt;</span> </span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(subject_id, timepoint, seq, fatigue) <span class="sc">|&gt;</span> </span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_wider</span>(<span class="at">id_cols =</span> <span class="fu">c</span>(subject_id, seq), <span class="at">names_from =</span> timepoint, <span class="at">names_prefix =</span> <span class="st">"tmpt_"</span>, <span class="at">values_from =</span> fatigue)</span>
+<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a> </span>
+<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a>data2_long <span class="ot">&lt;-</span> data2 <span class="sc">|&gt;</span> </span>
+<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="at">cols =</span> tmpt_1<span class="sc">:</span>tmpt_8,<span class="at">names_prefix =</span> <span class="st">"tmpt_"</span>, <span class="at">names_to =</span> <span class="st">"timepoint"</span>, <span class="at">values_to =</span> <span class="st">"fatigue"</span>)</span>
+<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a>  <span class="co"># define c1 depending on seq and period</span></span>
+<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a>  <span class="co"># define c2 depending on seq and period</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>This creates 3 data sets with a 1st order carryover of 0, and a 2nd order carryover of 0.</p>
+<p>data1 is tall, with all of the input vars, including random noise at each time point.</p>
+<p>data2 is wide, with only subject_id, sequence, and fatigue score at each time point.</p>
+<p>data2_long is the same as data2 but in long format.</p>
+<p>Need to add treatment, period to use package.</p>
+<p>Look at CrossCarry::Arterial data for example</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>CrossCarry<span class="sc">::</span>Arterial </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 360 × 5
+   Subject Period Treatment Pressure  Time
+     &lt;dbl&gt;  &lt;dbl&gt; &lt;chr&gt;        &lt;dbl&gt; &lt;dbl&gt;
+ 1       1      1 C              112   -30
+ 2       1      1 C              114   -15
+ 3       1      1 C               86    15
+ 4       1      1 C               86    30
+ 5       1      1 C               93    45
+ 6       1      1 C               90    60
+ 7       1      1 C              106    75
+ 8       1      1 C               91    90
+ 9       1      1 C               84   120
+10       1      1 C              102   240
+# ℹ 350 more rows</code></pre>
+</div>
+</div>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
