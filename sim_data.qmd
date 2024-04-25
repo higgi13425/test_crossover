@@ -14,6 +14,74 @@ library(tidyverse)
 library(CrossCarry)
 ```
 
+We will start with a test example from the CrossCarry package, the Arterial dataset.
+
+Let's read this in and examine it.
+
+```{r}
+art <- CrossCarry::Arterial 
+art$Subject |> table()
+
+
+```
+
+There are 12 subjects, and 10 time points (from -30 to 240 min) per subject per period, there are 3 periods, and three treatments (A,B,C). The outcome is Pressure = SBP in mm Hg. The 5 variables are subject, period, treatment, pressure, and time. The paper on the CrossCarry package is at <https://arxiv.org/pdf/2304.02440>.
+
+You can estimate the carryover with this code (from the paper).
+
+This adds variables for Carry_B and Carry_C to the 2-item list `carryover`, which includes the (1) original dataset, to which has been added the new (1/0 indicator) variables Carry_B and Carry_C, and (2) the vector of carryover variables.
+
+```{r}
+carryover <- createCarry(data=Arterial, treatment = "Treatment",
+  id = "Subject", period = "Period", carrySimple = TRUE)
+```
+
+Then we can build the crossGEE model with the code below.
+
+This results in a 2-item list named model, which contains (1) a QIC dataframe, and (2) a 28-item list of model components
+
+```{r}
+model <- CrossGEE(response = "Pressure", treatment = "Treatment",
+  period = "Period", id="Subject", carry=carryover$carryover,
+  data=carryover$data, correlation = "exchangeable", family=gaussian())
+```
+
+We can view the QIC dataframe with
+
+```{r}
+model$QIC
+```
+
+The output of the QIC is displayed, which is used to compare different models for the same variable. You can make a new model by adding the Time variable for minutes.
+
+```{r}
+model2 <- CrossGEE(response = "Pressure", treatment = "Treatment", period = "Period", id="Subject", carry=carryover$carryover, data=carryover$data, correlation = "exchangeable", covar = "Time", family=gaussian())
+```
+
+We can view the QIC, which has changed in model 2.
+
+```{r}
+model2$QIC
+```
+
+In model 2, It is clearly observed that there is reduction in the QIC, QICu, Quasi Lik and QICC, but the CIC did increase.
+
+You can also look at the model with
+
+```{r}
+model2$model
+```
+
+and see the summary with
+
+```{r}
+summary(model$model)
+```
+
+Treatment C reduces BP by 6.3 mm Hg compared to treatment A, and is the only significant predictor. None of the Periods, carryover vars, nor Treatment B are significantly associated with pressure.
+
+### Our Proposed Trial
+
 The trial design includes a crossover design between two treatments, thiamine at 15 mg/kg daily, and modafinil 100 mg bid, with 4 week treatment periods and 4 week washout periods. This will be followed by a 2nd 4 week washout period, then an 8 week trial of wellbutrin.
 
 Fatigue and QoL will be measured at the beginning and end of each period with the appropriate PRO (UCPRO and CDPRO), and with the fatigue instrument, the Inflammatory Bowel Disease-Fatigue Questionnaire. Range is 0-20 from 5 questions to get score 1, with higher scores indicating more fatigue. The median for CD is 9 in remission, 11 in flare. The median for UC is 8 in remission, 11 in flare. Data from *Journal of Crohn's and Colitis*, Volume 8, Issue 11, 1 November 2014, Pages 1398–1406, <https://doi.org/10.1016/j.crohns.2014.04.013>. Improvement is considered a reduction by 3 points.
@@ -116,7 +184,24 @@ data2 <- data1 |>
   pivot_wider(id_cols = c(subject_id, seq), names_from = timepoint, names_prefix = "tmpt_", values_from = fatigue)
  
 data2_long <- data2 |> 
-  pivot_longer(cols = tmpt_1:tmpt_8,names_prefix = "tmpt_", names_to = "timepoint", values_to = "fatigue")
+  pivot_longer(cols = tmpt_1:tmpt_8,names_prefix = "tmpt_", names_to = "timepoint", values_to = "fatigue") |> 
+  mutate(timepoint = as.numeric(timepoint)) |> 
+  mutate(period = (timepoint + 1) %/% 2 ) |> 
+  mutate(time = rep(c(0,1), 120)) |> 
+  mutate(rx = case_when(seq == 1 & period ==1 ~ "Thi",
+                        seq == 1 & period ==2 ~ "Thi",
+                        seq == 1 & period ==3 ~ "Mod",
+                        period == 4 ~ "aWell",
+                        seq == 2 & period ==1 ~ "Thi",
+                        seq == 2 & period ==2 ~ "Mod",
+                        seq == 2 & period ==3 ~ "Thi",
+                        seq == 3 & period ==1 ~ "Mod",
+                        seq == 3 & period ==2 ~ "Thi",
+                        seq == 3 & period ==3 ~ "Thi"
+                        )) |> 
+  select(-timepoint, -seq) |> 
+  filter(time == 1) |> 
+  select(-time)
   # define c1 depending on seq and period
   # define c2 depending on seq and period
 
@@ -130,10 +215,70 @@ data2 is wide, with only subject_id, sequence, and fatigue score at each time po
 
 data2_long is the same as data2 but in long format.
 
-Need to add treatment, period to use package.
+Adeed period, time, treatment, to get the data formatted for CrossCarry
 
-Look at CrossCarry::Arterial data for example
+Let's try to code this one.
+
+First we will add the indicator (1/0) variables for carryover.
+
+You can estimate the carryover with this code (from the paper).
+
+This adds variables for Carry_Thi and Carry_Well to the 2-item list `carryover`, which includes the (1) original dataset, to which has been added the new (1/0 indicator) variables Carry_Thi and Carry_Well, and (2) the vector of carryover variables.
 
 ```{r}
-CrossCarry::Arterial 
+carryover <- createCarry(data = data2_long, treatment = "rx",
+  id = "subject_id", period = "period", carrySimple = TRUE)
+```
+
+Then we can build the crossGEE model with the code below.
+
+This results in a 2-item list named model, which contains (1) a QIC dataframe, and (2) a 28-item list of model components. Error - `Error in geepack::geeglm(formula = form1, family = family, corstr = correlation, : Model matrix is rank deficient; geeglm can not proceed`
+
+Per SO ( link: <https://stackoverflow.com/questions/18818964/adding-interaction-to-gee-model-matrix-is-rank-deficient>), this can occur when you have a covariate that is constant across the dataset. May need to remove variables that are constant.
+
+-   Tried removing seq, timepoint to no effect.
+
+-   Tried removing time after filtering to timepoint == 1
+
+-   Tried reordering carry vars by changing "Well" to "aWell" since these are alphabetical by default
+
+```{r, error=TRUE}
+model3 <- CrossGEE(response = "fatigue", treatment = "rx",
+  period = "period", id = "subject_id", carry = carryover$carryover,
+  data = carryover$data, correlation = "exchangeable", family = gaussian())
+```
+
+We can view the QIC dataframe with - `did not work after model failure`
+
+```{r, error=TRUE}
+model3$QIC
+```
+
+The output of the QIC is displayed, which is used to compare different models for the same variable.
+
+You can make a new model4 by adding the Time variable for minutes. Does not work after removing the time variable. Take time out of model - get Same error - `Error in geepack::geeglm(formula = form1, family = family, corstr = correlation,  : 
+  Model matrix is rank deficient; geeglm can not proceed`
+
+```{r, error=TRUE}
+model4 <- CrossGEE(response = "fatigue", treatment = "rx", period = "period", id="subject_id", carry=carryover$carryover, data=carryover$data, correlation = "exchangeable", family=gaussian())
+```
+
+We can view the QIC, which has changed in model 4. - `did not work after model failure`
+
+```{r, error=TRUE}
+model4$QIC
+```
+
+In model 4, It is clearly observed that there is reduction in the QIC, QICu, Quasi Lik and QICC, but the CIC did increase.
+
+You can also look at the model with - `did not work after model failure`
+
+```{r, error=TRUE}
+model4$model
+```
+
+and see the summary with - `did not work after model failure`
+
+```{r, error=TRUE}
+summary(model4$model)
 ```
