@@ -43,7 +43,7 @@ This results in a 2-item list named model, which contains (1) a QIC dataframe, a
 ```{r}
 model <- CrossGEE(response = "Pressure", treatment = "Treatment",
   period = "Period", id="Subject", carry=carryover$carryover,
-  data=carryover$data, correlation = "exchangeable", family=gaussian())
+  data=carryover$data, correlation = "ar1", family=gaussian())
 ```
 
 We can view the QIC dataframe with
@@ -55,7 +55,15 @@ model$QIC
 The output of the QIC is displayed, which is used to compare different models for the same variable. You can make a new model by adding the Time variable for minutes.
 
 ```{r}
-model2 <- CrossGEE(response = "Pressure", treatment = "Treatment", period = "Period", id="Subject", carry=carryover$carryover, data=carryover$data, correlation = "exchangeable", covar = "Time", family=gaussian())
+model2 <- CrossGEE(response = "Pressure", 
+                   treatment = "Treatment", 
+                   period = "Period", 
+                   id="Subject", 
+                   carry=carryover$carryover, 
+                   data=carryover$data, 
+                   correlation = "exchangeable", 
+                   covar = "Time", 
+                   family=gaussian())
 ```
 
 We can view the QIC, which has changed in model 2.
@@ -75,10 +83,309 @@ model2$model
 and see the summary with
 
 ```{r}
-summary(model$model)
+summary(model2$model)
 ```
 
 Treatment C reduces BP by 6.3 mm Hg compared to treatment A, and is the only significant predictor. None of the Periods, carryover vars, nor Treatment B are significantly associated with pressure.
+
+### Test a Simple Trial
+
+We will use a simple approach with 2 treatments, thiamine at 15 mg/kg daily, and modafinil 100 mg bid, with 4 week treatment periods and 4 week washout periods. Fatigue and QoL will be measured at the beginning and end of each period with the appropriate PRO (UCPRO and CDPRO), and with the fatigue instrument, the Inflammatory Bowel Disease-Fatigue Questionnaire. Range is 0-20 from 5 questions to get score 1, with higher scores indicating more fatigue.
+
+There will be 5 study periods, 2 drugs. All will be of 4 weeks duration.
+
+| Sequence | Period 1 | Period 2 | Period 3 | Period 4 | Period 5 |
+|----------|----------|----------|----------|----------|----------|
+| 1 - AAB  | Thi      | Washout  | Thi      | Washout  | Mod      |
+| 2 - ABA  | Thi      | Washout  | Mod      | Washout  | Thi      |
+| 3 - BAA  | Mod      | Washout  | Thi      | Washout  | Thi      |
+
+```{r sim 2 drug}
+# 5 period, 2 drug, 6 seq no carryover, 6 fatigue measurements
+baseline = 15 # 0 to 20 scale
+sdev = 3.5 # used mean and SD data (3.5) for fatigue from Bager paper and Moulton paper
+c1 = 0 # half of previous effect size
+c2 = 0 # one quarter of 2nd previous effect size 
+effect_t <- -3.7
+effect_m <- -9.3
+# expect thiamine to be about 5.6 points worse
+
+data1sim <- tibble(
+  # set up patient_id
+  # set up f scores as single col, 
+  # set up time point as measurement time 1-8
+  # total 240 measurements of fatigue (f)
+  subject_id = rep(1:30, each = 6),
+  seq = rep(rep(c(1:3), each = 6), 10),
+  timepoint = c(rep(1:6, times = 30)),
+  # add random noise
+  rand1 = rnorm(n = 180, mean = 0, sd = sdev),
+  rand2 = rnorm(n = 180, mean = 0, sd = sdev),
+  rand3 = rnorm(n = 180, mean = 0, sd = sdev),
+  rand4 = rnorm(n = 180, mean = 0, sd = sdev),
+  rand5 = rnorm(n = 180, mean = 0, sd = sdev),
+  rand6 = rnorm(n = 180, mean = 0, sd = sdev),
+  c1 = 0,
+  c2 = 0,
+  baseline = baseline,
+  effect = case_when(timepoint == 1 ~ 0,
+                     seq == 1 & timepoint == 2 ~ effect_t,
+                     seq == 2 & timepoint == 2 ~ effect_t,
+                     seq == 3 & timepoint == 2 ~ effect_m,
+                     timepoint == 3 ~ 0,
+                     seq == 1 & timepoint == 4 ~ effect_t,
+                     seq == 2 & timepoint == 4 ~ effect_m,
+                     seq == 3 & timepoint == 4 ~ effect_t,
+                     timepoint == 5 ~ 0,
+                     seq == 1 & timepoint == 6 ~ effect_m,
+                     seq == 2 & timepoint == 6 ~ effect_t,
+                     seq == 3 & timepoint == 6 ~ effect_t),
+  fatigue = round(baseline + effect + c1 + c2 +
+    case_when(timepoint == 1 ~ rand1,
+              timepoint == 2 ~ rand2,
+              timepoint == 3 ~ rand3,
+              timepoint == 4 ~ rand4,
+              timepoint == 5 ~ rand5,
+              timepoint == 6 ~ rand6
+              ))
+)
+
+data2sim <- data1sim |> 
+  select(subject_id, timepoint, seq, fatigue) |> 
+  pivot_wider(id_cols = c(subject_id, seq), names_from = timepoint, names_prefix = "tmpt_", values_from = fatigue)
+ 
+data2sim_long <- data2sim |> 
+  pivot_longer(cols = tmpt_1:tmpt_6,names_prefix = "tmpt_", names_to = "timepoint", values_to = "fatigue") |> 
+  mutate(timepoint = as.numeric(timepoint)) |> 
+  mutate(period = (timepoint + 1) %/% 2 ) |> 
+  mutate(time = rep(c(0,1), 90)) |> 
+  mutate(rx = case_when(seq == 1 & period ==1 ~ "Thi",
+                        seq == 1 & period ==2 ~ "Thi",
+                        seq == 1 & period ==3 ~ "Mod",
+                        seq == 2 & period ==1 ~ "Thi",
+                        seq == 2 & period ==2 ~ "Mod",
+                        seq == 2 & period ==3 ~ "Thi",
+                        seq == 3 & period ==1 ~ "Mod",
+                        seq == 3 & period ==2 ~ "Thi",
+                        seq == 3 & period ==3 ~ "Thi"
+                        ))  |> 
+  mutate(fatigue = case_when(fatigue < 0 ~ 0,
+                             fatigue >20 ~ 20,
+                              TRUE ~ fatigue )) |> 
+  filter(period < 4) 
+
+data2_sim_diff <- data2sim_long |> 
+  mutate(delta_fatigue = fatigue - lead(fatigue)) |> 
+  filter(time == 1)
+  # define c1, c2 depending on seq and period
+```
+
+This adds variables for Carry_Thi and Carry_Well to the 2-item list `carryover`, which includes the (1) original dataset, to which has been added the new (1/0 indicator) variables Carry_Thi and Carry_Well, and (2) the vector of carryover variables.
+
+```{r}
+carryover_sim <- createCarry(data = data2sim_long, 
+                         treatment = "rx",
+                         id = "subject_id", 
+                         period = "period",
+                         carrySimple = TRUE)
+
+carryover_delta <- createCarry(data = data2_sim_diff, 
+                         treatment = "rx",
+                         id = "subject_id", 
+                         period = "period",
+                         carrySimple = TRUE)
+```
+
+Then we can build the crossGEE model with the code below.
+
+```{r}
+model4_sim <- CrossGEE(response = "fatigue", 
+                   treatment = "rx", 
+                   period = "period", 
+                   id = "subject_id", 
+                   carry = carryover_sim$carryover, 
+                   data = carryover_sim$data, 
+                   correlation = "ar1", 
+                   covar = "time",
+                   family = gaussian())
+
+model4_delta <- CrossGEE(response = "fatigue", 
+                   treatment = "rx", 
+                   period = "period", 
+                   id = "subject_id", 
+                   carry = carryover_delta$carryover, 
+                   data = carryover_delta$data, 
+                   correlation = "ar1", 
+                   family = gaussian())
+```
+
+and review the model
+
+```{r}
+model4_sim$model
+summary(model4_sim$model)
+
+summary(model4_delta$model)
+```
+
+### Test a More Complex 3 drug Trial
+
+We will step up to 3 treatments, thiamine at 15 mg/kg daily, modafinil 100 mg bid, and wellbutrin with 8 week treatment periods and 4 week washout periods. Fatigue and QoL will be measured at the beginning and end of each period with the appropriate PRO (UCPRO and CDPRO), and with the fatigue instrument, the Inflammatory Bowel Disease-Fatigue Questionnaire. Range is 0-20 from 5 questions to get score 1, with higher scores indicating more fatigue.
+
+There will be 5 study periods and six sequences.
+
+| Sequence | Period 1 | Period 2 | Period 3 | Period 4 | Period 5 |
+|----------|----------|----------|----------|----------|----------|
+| 1 - ABC  | Thi      | Washout  | Mod      | Washout  | Well     |
+| 2 - ACB  | Thi      | Washout  | Well     | Washout  | Mod      |
+| 3 - BCA  | Mod      | Washout  | Well     | Washout  | Thi      |
+| 1 - BAC  | Mod      | Washout  | Thi      | Washout  | Well     |
+| 2 - CAB  | Well     | Washout  | Thi      | Washout  | Mod      |
+| 3 - CBA  | Well     | Washout  | Mod      | Washout  | Thi      |
+
+```{r simulate-3drug}
+# 5 period, 3 drug, 6 seq no carryover, 6 fatigue measurements
+baseline = 15 # 0 to 20 scale
+sdev = 3.5 # used mean and SD data for fatigue from Bager paper and Moulton paper
+c1 = 0 # half of previous effect size
+c2 = 0 # one quarter of 2nd previous effect size 
+effect_t <- -3.7
+effect_m <- -9.3
+effect_w <- -7
+# expect thiamine to be about 5.6 points worse than M
+# expect wellbutrin to be about 2.3 points worse than M
+
+data1_3 <- tibble(
+  # set up patient_id
+  # set up f scores as single col, 
+  # set up time point as measurement time 1-6
+  # total 180 measurements of fatigue (f)
+  subject_id = rep(1:30, each = 6),
+  seq = rep(rep(c(1:6), each = 5), 6),
+  timepoint = c(rep(1:6, times = 30)),
+  # add random noise
+  rand1 = rnorm(n = 180, mean = 0, sd = sdev),
+  rand2 = rnorm(n = 180, mean = 0, sd = sdev),
+  rand3 = rnorm(n = 180, mean = 0, sd = sdev),
+  rand4 = rnorm(n = 180, mean = 0, sd = sdev),
+  rand5 = rnorm(n = 180, mean = 0, sd = sdev),
+  rand6 = rnorm(n = 180, mean = 0, sd = sdev),
+  c1 = 0,
+  c2 = 0,
+  baseline = baseline,
+  effect = case_when(timepoint == 1 ~ 0,
+                     seq == 1 & timepoint == 2 ~ effect_m,
+                     seq == 2 & timepoint == 2 ~ effect_w,
+                     seq == 3 & timepoint == 2 ~ effect_m,
+                     seq == 4 & timepoint == 2 ~ effect_m,
+                     seq == 5 & timepoint == 2 ~ effect_w,
+                     seq == 6 & timepoint == 2 ~ effect_w,
+                     timepoint == 3 ~ 0,
+                     seq == 1 & timepoint == 4 ~ effect_m,
+                     seq == 2 & timepoint == 4 ~ effect_w,
+                     seq == 3 & timepoint == 4 ~ effect_w,
+                     seq == 4 & timepoint == 4 ~ effect_t,
+                     seq == 5 & timepoint == 4 ~ effect_t,
+                     seq == 6 & timepoint == 4 ~ effect_m,
+                     timepoint == 5 ~ 0,
+                     seq == 1 & timepoint == 6 ~ effect_w,
+                     seq == 2 & timepoint == 6 ~ effect_m,
+                     seq == 3 & timepoint == 6 ~ effect_t,
+                     seq == 4 & timepoint == 4 ~ effect_w,
+                     seq == 5 & timepoint == 4 ~ effect_m,
+                     seq == 6 & timepoint == 4 ~ effect_t),
+  fatigue = round(baseline + effect + c1 + c2 +
+    case_when(timepoint == 1 ~ rand1,
+              timepoint == 2 ~ rand2,
+              timepoint == 3 ~ rand3,
+              timepoint == 4 ~ rand4,
+              timepoint == 5 ~ rand5,
+              timepoint == 6 ~ rand6
+              ))
+)
+
+data2_3 <- data1_3 |> 
+  select(subject_id, timepoint, seq, fatigue) |> 
+  pivot_wider(id_cols = c(subject_id, seq), names_from = timepoint, names_prefix = "tmpt_", values_from = fatigue)
+ 
+data2_3_long <- data2_3 |> 
+  pivot_longer(cols = tmpt_1:tmpt_6,names_prefix = "tmpt_", names_to = "timepoint", values_to = "fatigue") |> 
+  mutate(timepoint = as.numeric(timepoint)) |> 
+  mutate(period = (timepoint + 1) %/% 2 ) |> 
+  mutate(time = rep(c(0,1), 180)) |> 
+  mutate(rx = case_when(seq == 1 & period ==1 ~ "Thi",
+                        seq == 1 & period ==2 ~ "Mod",
+                        seq == 1 & period ==3 ~ "Well",
+                        seq == 2 & period ==1 ~ "Thi",
+                        seq == 2 & period ==2 ~ "Well",
+                        seq == 2 & period ==3 ~ "Mod",
+                        seq == 3 & period ==1 ~ "Mod",
+                        seq == 3 & period ==2 ~ "Well",
+                        seq == 3 & period ==3 ~ "Thi",
+                        seq == 4 & period ==1 ~ "Mod",
+                        seq == 4 & period ==2 ~ "Thi",
+                        seq == 4 & period ==3 ~ "Well",
+                        seq == 5 & period ==1 ~ "Well",
+                        seq == 5 & period ==2 ~ "Thi",
+                        seq == 5 & period ==3 ~ "Mod",
+                        seq == 6 & period ==1 ~ "Well",
+                        seq == 6 & period ==2 ~ "Mod",
+                        seq == 6 & period ==3 ~ "Thi"
+                        ))  |> 
+  mutate(fatigue = case_when(fatigue < 0 ~ 0,
+                             fatigue >20 ~ 20,
+                              TRUE ~ fatigue )) |> 
+  mutate(delta_fatigue = fatigue - lead(fatigue)) |> 
+  filter(time == 1)
+  # define c1, c2 depending on seq and period
+
+```
+
+This creates 3 data sets with a 1st order carryover of 0, and a 2nd order carryover of 0.
+
+data1 is tall, with all of the input vars, including random noise at each time point.
+
+data2 is wide, with only subject_id, sequence, and fatigue score at each time point.
+
+data2_long is the same as data2 but in long format.
+
+Adeed period, time, treatment, to get the data formatted for CrossCarry
+
+Let's try to code this one.
+
+First we will add the indicator (1/0) variables for carryover.
+
+You can estimate the carryover with this code (from the paper).
+
+This adds variables for Carry_Thi and Carry_Well to the 2-item list `carryover`, which includes the (1) original dataset, to which has been added the new (1/0 indicator) variables Carry_Thi and Carry_Well, and (2) the vector of carryover variables.
+
+```{r}
+carryover_3 <- createCarry(data = data2_3_long, 
+                         treatment = "rx",
+                         id = "subject_id", 
+                         period = "period",
+                         carrySimple = TRUE)
+```
+
+Then we can build the crossGEE model with the code below.
+
+```{r}
+model4_3 <- CrossGEE(response = "delta_fatigue", 
+                   treatment = "rx", 
+                   period = "period", 
+                   id = "subject_id", 
+                   carry = carryover_3$carryover, 
+                   data = carryover_3$data, 
+                   correlation = "ar1",
+                   family = gaussian())
+```
+
+and review the model
+
+```{r}
+model4_3$model
+summary(model4_3$model)
+```
 
 ### Our Proposed Trial
 
@@ -191,7 +498,6 @@ data2_long <- data2 |>
   mutate(rx = case_when(seq == 1 & period ==1 ~ "Thi",
                         seq == 1 & period ==2 ~ "Thi",
                         seq == 1 & period ==3 ~ "Mod",
-                        period == 4 ~ "aWell",
                         seq == 2 & period ==1 ~ "Thi",
                         seq == 2 & period ==2 ~ "Mod",
                         seq == 2 & period ==3 ~ "Thi",
@@ -199,9 +505,7 @@ data2_long <- data2 |>
                         seq == 3 & period ==2 ~ "Thi",
                         seq == 3 & period ==3 ~ "Thi"
                         )) |> 
-  select(-timepoint, -seq) |> 
-  filter(time == 1) |> 
-  select(-time)
+  filter(period < 4) 
   # define c1 depending on seq and period
   # define c2 depending on seq and period
 
@@ -243,9 +547,14 @@ Per SO ( link: <https://stackoverflow.com/questions/18818964/adding-interaction-
 -   Tried reordering carry vars by changing "Well" to "aWell" since these are alphabetical by default
 
 ```{r, error=TRUE}
-model3 <- CrossGEE(response = "fatigue", treatment = "rx",
-  period = "period", id = "subject_id", carry = carryover$carryover,
-  data = carryover$data, correlation = "exchangeable", family = gaussian())
+model3 <- CrossGEE(response = "fatigue", 
+                   treatment = "rx",
+                   period = "period", 
+                   id = "subject_id", 
+                   carry = carryover$carryover,
+                   data = carryover$data, 
+                   correlation = "exchangeable", 
+                   family = gaussian())
 ```
 
 We can view the QIC dataframe with - `did not work after model failure`
@@ -256,8 +565,7 @@ model3$QIC
 
 The output of the QIC is displayed, which is used to compare different models for the same variable.
 
-You can make a new model4 by adding the Time variable for minutes. Does not work after removing the time variable. Take time out of model - get Same error - `Error in geepack::geeglm(formula = form1, family = family, corstr = correlation,  : 
-  Model matrix is rank deficient; geeglm can not proceed`
+You can make a new model4 by adding the Time variable for minutes. Does not work after removing the time variable. Take time out of model - get Same error - `Error in geepack::geeglm(formula = form1, family = family, corstr = correlation,  :    Model matrix is rank deficient; geeglm can not proceed`
 
 ```{r, error=TRUE}
 model4 <- CrossGEE(response = "fatigue", treatment = "rx", period = "period", id="subject_id", carry=carryover$carryover, data=carryover$data, correlation = "exchangeable", family=gaussian())
